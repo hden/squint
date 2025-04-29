@@ -410,48 +410,36 @@
                                                         :jsx false
                                                         :pragmas pragmas
                                                         :need-html-import need-html-import))
-                 jsx *jsx*
-                 _ (when (and jsx jsx-runtime)
-                     (swap! imports str
-                            (format
-                             "var {jsx%s: _jsx, jsx%s%s: _jsxs, Fragment: _Fragment } = await import('%s');\n"
-                             (if jsx-dev "DEV" "")
-                             (if jsx-dev "" "s")
-                             (if jsx-dev "DEV" "")
-                             (str (:import-source jsx-runtime
-                                                  "react")
-                                  (if jsx-dev
-                                    "/jsx-dev-runtime"
-                                    "/jsx-runtime")))))
-                 _ (when @need-html-import
-                     (swap! imports str
-                            (if cc/*repl*
-                              "var squint_html = await import('squint-cljs/src/squint/html.js');\n"
-                              "import * as squint_html from 'squint-cljs/src/squint/html.js';\n")))
-                 pragmas (:js @pragmas)
-                 imports (when-not elide-imports @imports)
+                 imports (str/join (map (fn [[k v]]
+                                         (if cc/*repl*
+                                           (format "var { %s } = await import('%s');\n"
+                                                   (str/join ", " (map munge v))
+                                                   k)
+                                           (format "import { %s } from '%s';\n"
+                                                   (str/join ", " (map munge v))
+                                                   k)))
+                                       @*imported-vars*))
                  exports (when-not elide-exports
-                           (str
-                            (when-let [vars (disj @public-vars "default$")]
-                              (when (seq vars)
-                                (if false #_cc/*repl*
-                                  (str/join "\n"
-                                            (map (fn [var]
-                                                   (str "export " var ";"))
-                                                 vars))
-                                  (format "\nexport { %s }\n"
-                                          (str/join ", " vars)))))
-                            (when (contains? @public-vars "default$")
-                              "export default default$\n")))]
-             (assoc opts
-                    :pragmas pragmas
-                    :imports imports
-                    :exports exports
-                    :body transpiled
-                    :javascript (str pragmas imports transpiled exports)
-                    :jsx jsx
-                    :ns *cljs-ns*
-                    :ns-state (:ns-state opts)))))))))
+                          (str/join (map #(format "export { %s };\n" %)
+                                        @*public-vars*)))
+                 html-import (when @need-html-import
+                             (if cc/*repl*
+                               (format "var squint_html = await import('%s');\n"
+                                       "squint-cljs/src/squint/html.js")
+                               (format "import * as squint_html from '%s';\n"
+                                       "squint-cljs/src/squint/html.js")))
+                 jsx-import (when jsx-runtime
+                            (format "import {%s as _jsx, %s as _jsxs, Fragment as _Fragment} from '%s';\n"
+                                    (if jsx-dev "jsxDEV" "jsx")
+                                    (if jsx-dev "jsxDEV" "jsxs")
+                                    jsx-runtime))]
+             (str (:js @pragmas)
+                  @imports
+                  imports
+                  html-import
+                  jsx-import
+                  transpiled
+                  exports))))))))
 
 #?(:cljs
    (defn clj-ize-opts [opts]
