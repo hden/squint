@@ -622,12 +622,12 @@
         ensure-obj (ensure-global mname)
         ns-obj (str "globalThis." mname)
         [docstring clauses] (if (string? (first clauses))
-                            [(first clauses) (rest clauses)]
-                            [nil clauses])
+                              [(first clauses) (rest clauses)]
+                              [nil clauses])
         [directive clauses] (if (and (map? (first clauses))
-                                   (:directive (first clauses)))
-                            [(get (first clauses) :directive) (rest clauses)]
-                            [nil clauses])]
+                                     (:directive (first clauses)))
+                              [(get (first clauses) :directive) (rest clauses)]
+                              [nil clauses])]
     ;; TODO: deprecate *cljs-ns*
     (set! *cljs-ns* name)
     (swap! (:ns-state env) assoc :current name)
@@ -651,8 +651,6 @@
        (str ";; " docstring "\n"))
      (when directive
        (str "'" directive "'\n"))
-     (when *repl*
-       ensure-obj)
      (reduce (fn [acc [k & exprs]]
                (cond
                  (= :require k)
@@ -665,14 +663,14 @@
              ""
              clauses)
      (when *repl*
-       (str
-        (reduce-kv (fn [acc k _v]
-                     (if (symbol? k)
-                       (str acc
-                            ns-obj "." k " = " k ";\n")
-                       acc))
-                   ""
-                   @*aliases*))))))
+       (str ensure-obj
+            (reduce-kv (fn [acc k _v]
+                        (if (symbol? k)
+                          (str acc
+                               ns-obj "." k " = " k ";\n")
+                          acc))
+                       ""
+                       @*aliases*))))))
 
 (defmethod emit-special 'require [_ env [_ & clauses]]
   (let [clauses (map second clauses)]
