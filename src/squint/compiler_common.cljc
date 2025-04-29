@@ -620,7 +620,14 @@
 (defmethod emit-special 'ns [_type env [_ns name & clauses]]
   (let [mname (munge name)
         ensure-obj (ensure-global mname)
-        ns-obj (str "globalThis." mname)]
+        ns-obj (str "globalThis." mname)
+        [docstring clauses] (if (string? (first clauses))
+                            [(first clauses) (rest clauses)]
+                            [nil clauses])
+        [directive clauses] (if (and (map? (first clauses))
+                                   (:directive (first clauses)))
+                            [(get (first clauses) :directive) (rest clauses)]
+                            [nil clauses])]
     ;; TODO: deprecate *cljs-ns*
     (set! *cljs-ns* name)
     (swap! (:ns-state env) assoc :current name)
@@ -640,6 +647,10 @@
                   {:current name
                    (:core-alias env) *core-package*})))
     (str
+     (when docstring
+       (str ";; " docstring "\n"))
+     (when directive
+       (str "'" directive "'\n"))
      (when *repl*
        ensure-obj)
      (reduce (fn [acc [k & exprs]]
