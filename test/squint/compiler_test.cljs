@@ -476,8 +476,8 @@
                      (extend-protocol Identity boolean (i [s] "boolean"))
                      (extend-protocol Identity string (i [s] "string"))
                      [(i nil) (i false) (i "")
-                      (satisfies? Identity nil)
-                      ])))))
+                      (satisfies? Identity nil)])))))
+                      
 
 (deftest deftype-test
   (is (= 1 (jsv! '(do (deftype Foo [x]) (.-x (->Foo 1))))))
@@ -1358,7 +1358,7 @@
 (deftest partition-by-test
   (is (eq [[0] [1] [2] [3] [4] [5] [6] [7] [8] [9]]
           (js->clj (jsv! '(vec (take 10 (partition-by odd? (range))))))))
-  (is (eq [ [ 1, 1, 1 ], [ 2, 2 ], [ 3, 3 ] ]
+  (is (eq [ [ 1, 1, 1 ], [ 2, 2 ], [ 3, 3]]
           (jsv! '(vec (partition-by odd? [1 1 1 2 2 3 3])))))
   (is (eq #js [#js [1 1 1] #js [2 2 2] #js [3 3 3]]
           (jsv! "(into [] (partition-by odd?) [1 1 1 2 2 2 3 3 3])"))))
@@ -1698,7 +1698,7 @@
 ;;; begin ns / require related tests
 
 (deftest ns-test
-  (is (str/includes? (squint/compile-string (pr-str '(ns foo (:require ["./popup.css" ]))))
+  (is (str/includes? (squint/compile-string (pr-str '(ns foo (:require ["./popup.css"]))))
                      "import './popup.css'"))
   (is (re-find #"import.*'./popup.css'"
                (squint/compile-string (pr-str '(ns foo (:require ["./popup.css" :as pop]))))))
@@ -1708,6 +1708,29 @@
   (is (str/ends-with?
        (str/trim (squint/compile-string "(ns foo (:require [\"some-js-lib\" :refer [atom]])) atom" {:repl true}))
        "foo.atom;")))
+
+(deftest ns-docstring-test
+  (is (str/starts-with? (squint/compile-string "(ns foo
+                                                  \"This is a docstring\"
+                                                  (:require [\"some-js-lib\" :refer [atom]]))
+                                                atom")
+                        ";; This is a docstring")))
+
+(deftest ns-directive-test
+  (is (str/starts-with? (squint/compile-string "(ns foo
+                                                  {:directive \"use client\"}
+                                                  (:require [\"some-js-lib\" :refer [atom]]))
+                                                atom")
+                        "'use client'")))
+
+(deftest ns-docstring-directive-test
+  (is (str/starts-with? (squint/compile-string "(ns foo
+                                                  \"This is a docstring\"
+                                                  {:directive \"use client\"}
+                                                  (:require [\"some-js-lib\" :refer [atom]]))
+                                                atom")
+                        ";; This is a docstring
+                        'use client'")))
 
 (deftest require-test
   (let [s (squint/compile-string "(ns test-namespace (:require [\"some-js-library\" :refer [existsSync] :rename {existsSync exists}])) (exists \"README.md\")")]
